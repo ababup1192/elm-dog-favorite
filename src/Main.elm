@@ -1,7 +1,7 @@
 module Main exposing (main)
 
 import Browser
-import Html exposing (Html, button, div, h1, img, main_, p, text)
+import Html exposing (Html, button, div, img, li, main_, text, ul)
 import Html.Attributes exposing (class, src)
 import Html.Events exposing (onClick)
 import Http
@@ -27,7 +27,9 @@ main =
 
 
 type alias Model =
-    { currentDogUrl : String }
+    { currentDogUrl : String
+    , favoriteDogs : List String
+    }
 
 
 getRandomDog : Cmd Msg
@@ -40,7 +42,7 @@ getRandomDog =
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( { currentDogUrl = "" }, getRandomDog )
+    ( { currentDogUrl = "", favoriteDogs = [] }, getRandomDog )
 
 
 
@@ -48,12 +50,18 @@ init _ =
 
 
 type Msg
-    = GotRandomDog (Result Http.Error String)
+    = NextDog
+    | GotRandomDog (Result Http.Error String)
+    | AddFavoriteDogs
+    | RemoveDog String
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        NextDog ->
+            ( model, getRandomDog )
+
         GotRandomDog result ->
             case result of
                 Ok dogUrl ->
@@ -61,6 +69,16 @@ update msg model =
 
                 Err _ ->
                     ( model, Cmd.none )
+
+        AddFavoriteDogs ->
+            if not <| List.member model.currentDogUrl model.favoriteDogs then
+                ( { model | favoriteDogs = model.currentDogUrl :: model.favoriteDogs }, Cmd.none )
+
+            else
+                ( model, Cmd.none )
+
+        RemoveDog removeDog ->
+            ( { model | favoriteDogs = List.filter (\dog -> removeDog /= dog) model.favoriteDogs }, Cmd.none )
 
 
 
@@ -70,7 +88,22 @@ update msg model =
 view : Model -> Html Msg
 view model =
     main_ [ class "dogs-layout" ]
-        [ img [ src model.currentDogUrl ] []
+        [ div []
+            [ img [ src model.currentDogUrl ] []
+            , button [ onClick AddFavoriteDogs ] [ text "❤️" ]
+            , button [ onClick NextDog ] [ text "=>️" ]
+            ]
+        , div []
+            [ ul [] <|
+                List.map
+                    (\dogUrl ->
+                        li []
+                            [ img [ src dogUrl ] []
+                            , button [ onClick <| RemoveDog dogUrl ] [ text "🗑" ]
+                            ]
+                    )
+                    (List.reverse model.favoriteDogs)
+            ]
         ]
 
 
